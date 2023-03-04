@@ -31,8 +31,7 @@ parser.add_argument('--data_seed',                  default=1738,        type=in
 parser.add_argument('--data_root',                  default='./data/ntga_cnn_best/',        help='root of data')
 
 
-data_see_l = [141,1024,2048,1738,1776]
-seed_l [141,1024,2048,1738,1776]
+
 args = parser.parse_args()
 experiment = args.experiment
 stage2 = args.stage2
@@ -58,6 +57,10 @@ print("Data Seed: \t\t\t{}".format(data_seed))
 print("Data Root: \t\t\t{}".format(data_root))
 
 set_seed(args.seed)
+data_seed_l = random.sample(range(1, 50000), runs)
+seed_l = random.sample(range(1, 50000), runs)
+print("Seed List: \t\t\t\t{}".format(seed_l))
+print("Data Seed List: \t\t\t{}".format(data_seed_l))
 set_cuda(deterministic=True)
 
 if optimizer == 'SGD':
