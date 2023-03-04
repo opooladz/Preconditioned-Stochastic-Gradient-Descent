@@ -93,8 +93,7 @@ def create_class_imb_cifar10(batchsize,data_root,seed,data_seed):
     num_cls = 10
     classimb_ratio = 0.5
     # path = '/pytorch-cifar-master/data'
-    path = data_root
-    fullset = torchvision.datasets.CIFAR10(root=path, train=True, download=True, transform=transform_train)
+    fullset = torchvision.datasets.CIFAR10(root='./data/', train=True, download=True, transform=transform_train)
 
     set_seed(seed)
     if True:
@@ -134,12 +133,27 @@ def create_class_imb_cifar10(batchsize,data_root,seed,data_seed):
 
 # NTK Attacked Dataset
 
+cifar_transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.RandomCrop(32, padding=4),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+])
+
+cifar_transform_test = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+])
+
 class AdvDataSet(Dataset):
     def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
         self.img_labels = np.argmax(np.load(annotations_file),axis=1)
         self.transform = transform
         self.target_transform = target_transform
-        self.dataset = np.load(img_dir)
+        # self.dataset = np.load(img_dir)
+        self.dataset = np.uint8(np.load(img_dir)*255)
         
 
     def __len__(self):
@@ -163,9 +177,9 @@ def create_adv_dataset(batchsize,data_root,seed,data_seed):
     y_train = data_root + 'y_val_cifar10.npy'    
 
     set_seed(seed)
-    trainset = AdvDataSet(y_train,x_train)
+    trainset = AdvDataSet(y_train,x_train,transform=cifar_transform)
 
-    testset = AdvDataSet(y_test,x_test)
+    testset = AdvDataSet(y_test,x_test,transform=cifar_transform)
 
     train_loader = torch.utils.data.DataLoader(
         trainset, batch_size=batchsize, shuffle=True
@@ -281,10 +295,10 @@ def get_dataset(experiment,batchsize,data_root,seed,data_seed):
         # this comes with noise prior used in sofr training
         # noisy label dataset: train label is noisy test is clean
         # Observations:
-        # 1) giffted kid syndrom with SGD but not with PSGD 
+        # 1) Gifted Kid Syndrome with SGD but not with PSGD 
         train_loader, noise_prior, test_loader = create_noisy_dataset(batchsize,seed,data_seed,soft=True)
         return train_loader, noise_prior ,test_loader
-        
+
     else:
         #TODO make system exit 
         print('This experiment is not supported')
