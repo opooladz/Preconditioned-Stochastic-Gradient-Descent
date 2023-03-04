@@ -73,7 +73,8 @@ else:
     batchsize = 64
 
 def test(net, device, data_loader, criterion):
-    # net = torch.compile(net)
+    if torch.__version__.startswith('2'):
+        net = torch.compile(net)
     net.eval()
     test_loss = 0
     correct = 0
@@ -94,7 +95,8 @@ def test(net, device, data_loader, criterion):
     return accuracy
 
 def train(net, device, data_loader, criterion):
-    # net = torch.compile(net)
+    if torch.__version__.startswith('2'):
+        net = torch.compile(net)
     net.train()  # do not forget it as there is BN
     total = 0
     train_loss = 0
@@ -149,7 +151,6 @@ else:
         lr_params = lr0,
         momentum = 0.9,
         preconditioner_update_probability = 0.1,
-        exact_hessian_vector_product = False
     )
 
 # stage 1 of experiment
