@@ -21,13 +21,13 @@ parser.add_argument("--experiment",                 default='cifar10',          
 parser.add_argument("--stage2",                     default='cifar10',                      help="pick stage2 of experiment")
 parser.add_argument("--epoch_concept_switch",       default=201,                            help="when should we switch to stage2 of experiment")
 parser.add_argument("--num_epoch",                  default=200,                            help="how long should our full experiment be")
-parser.add_argument("--device",                     default='cuda:0',                       help="for example, cuda:0")
+parser.add_argument("--device",                     default='cpu',                       help="for example, cuda:0")
 parser.add_argument("--optimizer",                  default='PSGD_XMat',                    help="choices are SGD, PSGD_XMat and PSGD_UVd")
 parser.add_argument("--lr_scheduler",               default='cos',                          help="choices are stage and cos")
 parser.add_argument("--shortcut_connection",        default=1,           type=int,          help="choices are 0 and 1")
 parser.add_argument('--seed',                       default=2048,        type=int,          help='random seed')
 parser.add_argument('--data_seed',                  default=1738,        type=int,          help='random data_seed')
-parser.add_argument('--data_root',                  default='./data/ntga_cnn_best',         help='root of data')
+parser.add_argument('--data_root',                  default='./data/ntga_cnn_best/',         help='root of data')
 
 
 args = parser.parse_args()
@@ -73,6 +73,7 @@ else:
     batchsize = 64
 
 def test(net, device, data_loader, criterion):
+    # net = torch.compile(net)
     net.eval()
     test_loss = 0
     correct = 0
@@ -93,6 +94,7 @@ def test(net, device, data_loader, criterion):
     return accuracy
 
 def train(net, device, data_loader, criterion):
+    # net = torch.compile(net)
     net.train()  # do not forget it as there is BN
     total = 0
     train_loss = 0
@@ -137,6 +139,8 @@ elif optimizer == 'PSGD_XMat':
         lr_params = lr0,
         momentum = 0.9,
         preconditioner_update_probability = 0.1,
+        exact_hessian_vector_product = False
+
     )
 else:
     # PSGD with low rank approximation preconditioner
@@ -145,6 +149,7 @@ else:
         lr_params = lr0,
         momentum = 0.9,
         preconditioner_update_probability = 0.1,
+        exact_hessian_vector_product = False
     )
 
 # stage 1 of experiment
