@@ -62,6 +62,7 @@ Download the Neural Tangent Generalization Attacks [Dataset](https://drive.googl
 * add ConvMix
 * add ViT 
 * add NAS
+* Add FFCV
 
 
 ### Ideas
