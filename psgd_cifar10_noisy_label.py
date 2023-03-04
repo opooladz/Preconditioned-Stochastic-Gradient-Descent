@@ -78,6 +78,8 @@ else:
     batchsize = 64
 
 def test(net, device, data_loader, criterion):
+    if torch.__version__.startswith('2'):
+        net = torch.compile(net)    
     net.eval()
     test_loss = 0
     correct = 0
@@ -99,6 +101,8 @@ def test(net, device, data_loader, criterion):
     return accuracy
 
 def test_clean(net, device, data_loader, criterion):
+    if torch.__version__.startswith('2'):
+        net = torch.compile(net)    
     net.eval()
     test_loss = 0
     correct = 0
@@ -120,6 +124,8 @@ def test_clean(net, device, data_loader, criterion):
     return accuracy
 
 def train(net, device, train_loader, loss_cores,noise_prior_cur):
+    if torch.__version__.startswith('2'):
+        net = torch.compile(net)    
     net.train()  # do not forget it as there is BN
     total = 0
     train_loss = 0
