@@ -20,10 +20,17 @@ You can control if you want to change dataloaders on the fly by setting a ```--s
 For example:
 
 ```shell
-python3 psgd_cifar10.py --experiment blurred --stage2 cifar10 --epoch_concept_switch 100  --optimizer XMat
+python3 psgd_cifar10.py --experiment blurred --stage2 cifar10 --epoch_concept_switch 100  --optimizer PSGD_XMat
 ```
 
 will train a ResNet-18 for 100 epochs and then switch to training with standard clean cifar10 data.
+
+and 
+
+```shell
+python3 psgd_cifar10.py --experiment blurred --stage2 cifar10 --epoch_concept_switch 100  --optimizer SGD
+```
+will train a ResNet-18 for 100 epochs and then switch to training with standard clean cifar10 data using SGD
 
 For NTK Attacked dataset you need to [download](https://drive.google.com/drive/folders/1OD54_gK6wnhyVwQGnHs7vIsKVOL-48zd?usp=share_link) and set the path via the  ```--data_root``` argument.
 
