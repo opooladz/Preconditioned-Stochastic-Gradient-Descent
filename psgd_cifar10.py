@@ -120,7 +120,7 @@ def train(net, device, data_loader, criterion):
     return train_loss, train_accuracy
 
 set_seed(args.seed)
-net = ResNet18().to(device)
+net = ResNet18(shortcut_connection=True).to(device)
 
 if optimizer == 'SGD':
     # SGD baseline
