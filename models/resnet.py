@@ -150,9 +150,3 @@ def ResNet101(shortcut_connection):
 def ResNet152(shortcut_connection):
     return ResNet(Bottleneck, [3, 8, 36, 3],shortcut_connection=shortcut_connection)
 
-def test():
-    net = ResNet18(shortcut_connection=True)
-    y = net(torch.randn(1, 3, 32, 32))
-    print(y.size())
-
-# test()
