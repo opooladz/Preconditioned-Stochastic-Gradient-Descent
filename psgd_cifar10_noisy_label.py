@@ -20,11 +20,11 @@ from data_loaders.loaders import *
 from models.resnet import ResNet18
 from reproduce.seeds import *
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--experiment",                 default='cifar10',                      help="pick which experiment")
-parser.add_argument("--stage2",                     default='cifar10',                      help="pick which experiment")
-parser.add_argument("--epoch_concept_switch",       default=201,                            help="pick which experiment")
+parser.add_argument("--stage2",                     default='cifar10',                      help="pick stage2 of experiment")
+parser.add_argument("--epoch_concept_switch",       default=201,                            help="when should we switch to stage2 of experiment")
+parser.add_argument("--num_epoch",                  default=200,                            help="how long should our full experiment be")
 parser.add_argument("--device",                     default='cuda:0',                       help="for example, cuda:0")
 parser.add_argument("--optimizer",                  default='PSGD_XMat',                    help="choices are SGD, PSGD_XMat and PSGD_UVd")
 parser.add_argument("--lr_scheduler",               default='cos',                          help="choices are stage and cos")
@@ -37,6 +37,7 @@ parser.add_argument('--data_root',                  default='./data/ntga_cnn_bes
 args = parser.parse_args()
 experiment = args.experiment
 stage2 = args.stage2
+num_epoch = args.num_epoch
 epoch_concept_switch = args.epoch_concept_switch
 device = torch.device(args.device)
 optimizer = args.optimizer
@@ -45,6 +46,10 @@ shortcut_connection = bool(args.shortcut_connection)
 seed = args.seed
 data_seed = args.data_seed
 data_root = args.data_root
+print("Experiment Stage 1: \t\t\t{}".format(experiment))
+print("Experiment Stage 2: \t\t\t{}".format(stage2))
+print("Total Epochs: \t\t\t{}".format(num_epoch))
+print("Change Experiment at Epoch: \t\t\t{}".format(epoch_concept_switch))
 print("Device: \t\t\t{}".format(device))
 print("Optimizer: \t\t\t{}".format(optimizer))
 print("Learning rate schedular:\t{}".format(lr_scheduler))
