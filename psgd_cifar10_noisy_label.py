@@ -98,7 +98,26 @@ def test(net, device, data_loader, criterion):
 
     return accuracy
 
+def test_clean(net, device, data_loader, criterion):
+    net.eval()
+    test_loss = 0
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(data_loader):
+        # for batch_idx, (inputs, targets) in tqdm( enumerate(data_loader), total = len(data_loader)):
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = net(inputs)
+            loss = criterion(outputs, targets)
 
+            test_loss += loss.item()
+            _, predicted = outputs.max(1)
+            total += targets.size(0)
+            correct += predicted.eq(targets).sum().item()
+
+    accuracy = 100.0 * correct / total
+
+    return accuracy
 
 def train(net, device, train_loader, loss_cores,noise_prior_cur):
     net.train()  # do not forget it as there is BN
