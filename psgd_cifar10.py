@@ -21,8 +21,8 @@ parser.add_argument("--experiment",                 default='cifar10',          
 parser.add_argument("--stage2",                     default='cifar10',                      help="pick stage2 of experiment")
 parser.add_argument("--epoch_concept_switch",       default=201,                            help="when should we switch to stage2 of experiment")
 parser.add_argument("--num_epoch",                  default=200,                            help="how long should our full experiment be")
-parser.add_argument("--num_runs",                   default=5,                              help="how many runs")
-parser.add_argument("--device",                     default='cpu',                          help="for example, cuda:0")
+parser.add_argument("--num_runs",                   default=1,                              help="how many runs")
+parser.add_argument("--device",                     default='cuda:0',                       help="for example, cuda:0")
 parser.add_argument("--optimizer",                  default='PSGD_XMat',                    help="choices are SGD, PSGD_XMat and PSGD_UVd")
 parser.add_argument("--lr_scheduler",               default='cos',                          help="choices are stage and cos")
 parser.add_argument("--shortcut_connection",        default=1,           type=int,          help="choices are 0 and 1")
@@ -130,7 +130,7 @@ def train(net, device, data_loader, criterion):
     return train_loss, train_accuracy
 train_accs_l = []
 test_accs_l = []
-for run in runs:
+for run in range(runs):
     seed_l[run]
     set_seed(seed_l[run])
     net = ResNet18(shortcut_connection=True).to(device)
@@ -190,8 +190,7 @@ for run in runs:
         test_accuracy = test(net, device, test_loader, criterion)
         print(
             "run: {}; epoch: {}; train loss: {:.2f}; train accuracy: {:.2f}; test accuracy: {:.2f}".format(
-                run + 1
-                epoch + 1, train_loss, train_accuracy, test_accuracy
+                run + 1, epoch + 1, train_loss, train_accuracy, test_accuracy
             )
         )
 
