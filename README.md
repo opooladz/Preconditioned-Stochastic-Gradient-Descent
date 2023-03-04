@@ -1,4 +1,4 @@
-# Preconditioned-Gradient-Stochastic-Descent
+# Preconditioned-Stochastic-Gradient-Descent
 A repo based on [XiLin Li's PSGD repo](https://github.com/lixilinx/psgd_torch) and extends some of the experiments.
 
 
