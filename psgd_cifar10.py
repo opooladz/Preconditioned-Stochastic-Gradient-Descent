@@ -21,15 +21,18 @@ parser.add_argument("--experiment",                 default='cifar10',          
 parser.add_argument("--stage2",                     default='cifar10',                      help="pick stage2 of experiment")
 parser.add_argument("--epoch_concept_switch",       default=201,                            help="when should we switch to stage2 of experiment")
 parser.add_argument("--num_epoch",                  default=200,                            help="how long should our full experiment be")
-parser.add_argument("--device",                     default='cpu',                       help="for example, cuda:0")
+parser.add_argument("--num_runs",                   default=5,                              help="how many runs")
+parser.add_argument("--device",                     default='cpu',                          help="for example, cuda:0")
 parser.add_argument("--optimizer",                  default='PSGD_XMat',                    help="choices are SGD, PSGD_XMat and PSGD_UVd")
 parser.add_argument("--lr_scheduler",               default='cos',                          help="choices are stage and cos")
 parser.add_argument("--shortcut_connection",        default=1,           type=int,          help="choices are 0 and 1")
 parser.add_argument('--seed',                       default=2048,        type=int,          help='random seed')
 parser.add_argument('--data_seed',                  default=1738,        type=int,          help='random data_seed')
-parser.add_argument('--data_root',                  default='./data/ntga_cnn_best/',         help='root of data')
+parser.add_argument('--data_root',                  default='./data/ntga_cnn_best/',        help='root of data')
 
 
+data_see_l = [141,1024,2048,1738,1776]
+seed_l [141,1024,2048,1738,1776]
 args = parser.parse_args()
 experiment = args.experiment
 stage2 = args.stage2
@@ -122,69 +125,78 @@ def train(net, device, data_loader, criterion):
 
     train_accuracy = 100.0 * correct / total    
     return train_loss, train_accuracy
+train_accs_l = []
+test_accs_l = []
+for run in runs:
+    seed_l[run]
+    set_seed(seed_l[run])
+    net = ResNet18(shortcut_connection=True).to(device)
 
-set_seed(args.seed)
-net = ResNet18(shortcut_connection=True).to(device)
-
-if optimizer == 'SGD':
-    # SGD baseline
-    opt = psgd.XMat(
-        net.parameters(),
-        lr_params = lr0, # note that momentum in PSGD is the moving average of gradient
-        momentum = 0.9,  # so lr 0.1 becomes 1 when momentum factor is 0.9
-        preconditioner_update_probability = 0.0, # PSGD reduces to SGD when P = eye()
-    )
-elif optimizer == 'PSGD_XMat':
-    # PSGD with X-shape matrix preconditioner
-    opt = psgd.XMat(
-        net.parameters(),
-        lr_params = lr0,
-        momentum = 0.9,
-        preconditioner_update_probability = 0.1,
-        exact_hessian_vector_product = False
-
-    )
-else:
-    # PSGD with low rank approximation preconditioner
-    opt = psgd.UVd(
-        net.parameters(),
-        lr_params = lr0,
-        momentum = 0.9,
-        preconditioner_update_probability = 0.1,
-    )
-
-# stage 1 of experiment
-# please note noisy label experiment requires different training loop -- see psgd_cifar10_noisy_label.py 
-train_loader, test_loader = get_dataset(experiment, batchsize, data_root, seed, data_seed)
-
-
-criterion = nn.CrossEntropyLoss()
-num_epoch = 200
-train_accs = []
-test_accs = []
-for epoch in range(num_epoch):
-    if lr_scheduler == 'cos':
-        opt.lr_params = lr0*(1 + math.cos(math.pi*epoch/num_epoch))/2
-    else:
-        # schedule the learning rate
-        if epoch == int(num_epoch * 0.7):
-            opt.lr_params *= 0.1
-        if epoch == int(num_epoch * 0.9):
-            opt.lr_params *= 0.1
-
-    if epoch ==  epoch_concept_switch:
-        # if there is a second stage of the experiment
-        # note noisy label dataset requires different train loop -- see psgd_cifar10_noisy_label.py 
-        train_loader, test_loader = get_dataset(experiment, batchsize, data_root, seed, data_seed)
-    train_loss, train_accuracy = train(net, device, train_loader, criterion)
-    test_accuracy = test(net, device, test_loader, criterion)
-    print(
-        "epoch: {}; train loss: {:.2f}; train accuracy: {:.2f}; test accuracy: {:.2f}".format(
-            epoch + 1, train_loss, train_accuracy, test_accuracy
+    if optimizer == 'SGD':
+        # SGD baseline
+        opt = psgd.XMat(
+            net.parameters(),
+            lr_params = lr0, # note that momentum in PSGD is the moving average of gradient
+            momentum = 0.9,  # so lr 0.1 becomes 1 when momentum factor is 0.9
+            preconditioner_update_probability = 0.0, # PSGD reduces to SGD when P = eye()
         )
-    )
+    elif optimizer == 'PSGD_XMat':
+        # PSGD with X-shape matrix preconditioner
+        opt = psgd.XMat(
+            net.parameters(),
+            lr_params = lr0,
+            momentum = 0.9,
+            preconditioner_update_probability = 0.1,
+            exact_hessian_vector_product = False
 
-    train_accs.append(train_accuracy)
-    test_accs.append(test_accuracy)
-print("train_accuracy: {}".format(train_accs))
-print("test_accuracy: {}".format(test_accs))
+        )
+    else:
+        # PSGD with low rank approximation preconditioner
+        opt = psgd.UVd(
+            net.parameters(),
+            lr_params = lr0,
+            momentum = 0.9,
+            preconditioner_update_probability = 0.1,
+        )
+
+    # stage 1 of experiment
+    # please note noisy label experiment requires different training loop -- see psgd_cifar10_noisy_label.py 
+    train_loader, test_loader = get_dataset(experiment, batchsize, data_root, seed_l[run], data_seed_l[run])
+
+
+    criterion = nn.CrossEntropyLoss()
+    num_epoch = 200
+    train_accs = []
+    test_accs = []
+    for epoch in range(num_epoch):
+        if lr_scheduler == 'cos':
+            opt.lr_params = lr0*(1 + math.cos(math.pi*epoch/num_epoch))/2
+        else:
+            # schedule the learning rate
+            if epoch == int(num_epoch * 0.7):
+                opt.lr_params *= 0.1
+            if epoch == int(num_epoch * 0.9):
+                opt.lr_params *= 0.1
+
+        if epoch ==  epoch_concept_switch:
+            # if there is a second stage of the experiment
+            # note noisy label dataset requires different train loop -- see psgd_cifar10_noisy_label.py 
+            
+            train_loader, test_loader = get_dataset(experiment, batchsize, data_root, seed_l[run], data_seed_l[run])
+        train_loss, train_accuracy = train(net, device, train_loader, criterion)
+        test_accuracy = test(net, device, test_loader, criterion)
+        print(
+            "run: {}; epoch: {}; train loss: {:.2f}; train accuracy: {:.2f}; test accuracy: {:.2f}".format(
+                run + 1
+                epoch + 1, train_loss, train_accuracy, test_accuracy
+            )
+        )
+
+        train_accs.append(train_accuracy)
+        test_accs.append(test_accuracy)
+    print("train_accuracy: {}".format(train_accs))
+    print("test_accuracy: {}".format(test_accs))
+    train_accs_l.append(train_accs)
+    test_accs_l.append(test_accs)
+print("train_accuracy: {}".format(train_accs_l))
+print("test_accuracy: {}".format(test_accs_l))    
