@@ -36,6 +36,7 @@ args = parser.parse_args()
 experiment = args.experiment
 stage2 = args.stage2
 num_epoch = args.num_epoch
+runs = args.num_runs
 epoch_concept_switch = args.epoch_concept_switch
 device = torch.device(args.device)
 optimizer = args.optimizer
