@@ -28,7 +28,7 @@ will train a ResNet-18 for 100 epochs and then switch to training with standard 
 and 
 
 ```shell
-python3 psgd_cifar10.py --experiment blurred --stage2 cifar10 --epoch_concept_switch 100  --optimizer SGD
+python3 psgd_cifar10.py --experiment blurred --stage2 cifar10 --epoch_concept_switch 100  --optimizer SGD --num_runs 5
 ```
 will train a ResNet-18 for 100 epochs and then switch to training with standard clean cifar10 data using SGD
 
