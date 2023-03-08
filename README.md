@@ -7,7 +7,7 @@ A repo based on [XiLin Li's PSGD repo](https://github.com/lixilinx/psgd_torch) a
 ### Quick Guide
 
 ```shell
-python3 psgd_cifar10.py --experiment cifar10 --optimizer XMat
+python3 psgd_cifar10.py --experiment cifar10 --optimizer PSGD_XMat
 ```
 You can pick from the following CIFAR10 ```--experiment```:
 * Standard: ```cifar10```
