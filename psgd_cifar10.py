@@ -63,6 +63,15 @@ seed_l = random.sample(range(1, 50000), runs)
 print("Seed List: \t\t\t\t{}".format(seed_l))
 print("Data Seed List: \t\t\t{}".format(data_seed_l))
 set_cuda(deterministic=True)
+torch_version = torch.__version__
+print("Torch Version: \t\t\t\t{}".format(torch_version))
+if torch_version.startswith('2'):
+    exact_hessian_vector_product = False
+    print("Using inexact hessian vector product: torch.compile does not support double auto.grad")
+else:
+    exact_hessian_vector_product = True
+    
+
 
 if optimizer == 'SGD':
     lr0 = 1.0   # 0.1 -> 1.0 when momentum factor = 0.9 as momentum in PSGD is the moving average of gradient
@@ -151,7 +160,7 @@ for run in range(runs):
             lr_params = lr0,
             momentum = 0.9,
             preconditioner_update_probability = 0.1,
-            exact_hessian_vector_product = False
+            exact_hessian_vector_product = exact_hessian_vector_product
 
         )
     else:
@@ -161,6 +170,7 @@ for run in range(runs):
             lr_params = lr0,
             momentum = 0.9,
             preconditioner_update_probability = 0.1,
+            exact_hessian_vector_product = exact_hessian_vector_product
         )
 
     # stage 1 of experiment
