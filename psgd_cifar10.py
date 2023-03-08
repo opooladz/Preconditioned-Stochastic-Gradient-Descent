@@ -196,7 +196,7 @@ for run in range(runs):
             # if there is a second stage of the experiment
             # note noisy label dataset requires different train loop -- see psgd_cifar10_noisy_label.py 
             
-            train_loader, test_loader = get_dataset(experiment, batchsize, data_root, seed_l[run], data_seed_l[run])
+            train_loader, test_loader = get_dataset(stage2, batchsize, data_root, seed_l[run], data_seed_l[run])
         train_loss, train_accuracy = train(net, device, train_loader, criterion)
         test_accuracy = test(net, device, test_loader, criterion)
         print(
