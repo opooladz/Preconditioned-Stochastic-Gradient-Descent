@@ -20,10 +20,10 @@ You can control if you want to change dataloaders on the fly by setting a ```--s
 For example:
 
 ```shell
-python3 psgd_cifar10.py --experiment blurred --stage2 cifar10 --epoch_concept_switch 100  --optimizer PSGD_XMat
+python3 psgd_cifar10.py --experiment blurred --stage2 cifar10 --epoch_concept_switch 100  --optimizer PSGD_XMat --lr_scheduler exp
 ```
 
-will train a ResNet-18 for 100 epochs and then switch to training with standard clean cifar10 data.
+will train a ResNet-18 for 100 epochs and then switch to training with standard clean cifar10 data. Note lr_scheduler of exp is to be consistant with Critical Learning Period's paper and does not yield the best results. For best results use ```--lr_scheduler cos```
 
 and 
 
