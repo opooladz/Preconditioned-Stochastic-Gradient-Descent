@@ -234,7 +234,7 @@ def create_noisy_dataset(batchsize,seed,data_seed,soft=False):
 # Blurred CIFAR10 
 
 transform_train_blur = transforms.Compose(
-    [   transforms.Resize(8),
+    [   transforms.Resize(8,antialias=True),
         transforms.Resize(32,interpolation=transforms.InterpolationMode.BILINEAR),
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
