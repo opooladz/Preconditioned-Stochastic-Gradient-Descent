@@ -185,6 +185,8 @@ for run in range(runs):
     for epoch in range(num_epoch):
         if lr_scheduler == 'cos':
             opt.lr_params = lr0*(1 + math.cos(math.pi*epoch/num_epoch))/2
+        elif lr_scheduler == 'exp':
+             opt.lr_params = lr0 * (0.1 ** np.less(num_epoch, epoch).sum())   
         else:
             # schedule the learning rate
             if epoch == int(num_epoch * 0.7):
