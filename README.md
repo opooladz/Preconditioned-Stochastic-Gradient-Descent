@@ -38,7 +38,7 @@ If you want to run the Noisy experiments that uses proir information run the ```
 
 
 ### Experiment Observations 
-#### Noisy Label : Gifted Kid Syndrome 
+#### Noisy Label : Pure Memorization without Generalization 
   * PSGD gets test acc 78% avg over 5 nets with ~45% train acc over noisy labels. 
   * SGD gets test acc 23% avg over 5 nets with ~44% train acc over noisy labels.
     * 4/5 get 10% test acc at 200 epochs with 99.99% confidence in predictions 
@@ -50,7 +50,11 @@ If you want to run the Noisy experiments that uses proir information run the ```
     
 #### Blurred: Clear indication of PSGD retaining neuro-plasticity vs SGD.
   * Train for 100 epochs of blur and then for another 100 with standard: 
-    * PSGD recover test accuracy of 93.5% -- a 2% decrease compared to a ~11% decrease for SGD
+    * PSGD recover test accuracy of 93.5% with cosine lr sched
+      *a 2% decrease compared to no deficit a ~1% decrease for SGD
+    * With exp decay lr sched and removing the deficit at 100 epochs:
+      * PSGD got
+      * While the reported numbers for SGD was abount 84% 
 
 
 ### Dataset Setup:
