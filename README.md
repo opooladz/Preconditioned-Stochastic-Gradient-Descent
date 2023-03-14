@@ -42,10 +42,10 @@ If you want to run the Noisy experiments that uses proir information run the ```
   * PSGD gets test acc 78% avg over 5 nets with ~45% train acc over noisy labels. 
   * SGD gets test acc 23% avg over 5 nets with ~44% train acc over noisy labels.
     * 4/5 get 10% test acc at 200 epochs with 99.99% confidence in predictions 
-      * Gifted Kid Syndrome -- most kids are not that smart but can learn with a good teacher. 
+      * Pure Memorization -- Simply overfit the train set but with no generalization to the test set 10% accuracy on test. 
       * With a bad teacher seems the best they can do is memorize; since they get 10% acc on test set with super high confidence
     * 1/5 gets 77% test acc at 200 epochs with 99.99% confidence in predictions 
-      * Lucky Gifted Kid -- actually super smart and can learn/generalize even given a teacher thats wrong 54% of the time
+      * Lucky Initilization -- actually super smart and can learn/generalize even given a teacher thats wrong 54% of the time
     * both have ~44% acc on noisy labeled train set 
     
 #### Blurred: Clear indication of PSGD retaining neuro-plasticity vs SGD.
