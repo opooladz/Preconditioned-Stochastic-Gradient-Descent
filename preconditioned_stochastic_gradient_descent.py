@@ -1,3 +1,4 @@
+#@title Default title text
 """Created in May, 2018
 Pytorch functions for preconditioned SGD
 @author: XILIN LI, lixilinx@gmail.com
@@ -9,7 +10,7 @@ Add torch.jit.script decorator by default
 """
 
 import torch
-
+from torch.optim.optimizer import Optimizer
 
 ###############################################################################
 @torch.jit.script
@@ -814,7 +815,7 @@ def precond_grad_Xmat_math(a, b, g):
     return (a*a + torch.flip(b*b, [0]))*g + (ab + torch.flip(ab, [0]))*torch.flip(g, [0])
 
 
-class XMat:
+class XMat(Optimizer):
     """
     Implements the Xmat preconditioner, Q = diag(a) + adiag(b), as a class.
     Args for initialization:
@@ -866,6 +867,8 @@ class XMat:
         self._a = torch.ones(num_params, dtype=dtype, device=device)*preconditioner_init_scale
         self._b = torch.zeros(num_params, dtype=dtype, device=device)
         self._m = None # buffer for momentum 
+        defaults = dict(lr=lr_params)
+        super(XMat, self).__init__(self._params_with_grad, defaults)        
 
     @torch.no_grad()
     def step(self, closure):
