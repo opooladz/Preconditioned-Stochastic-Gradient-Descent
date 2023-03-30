@@ -883,7 +883,8 @@ def update_precond_XMat(a,b, vs, hs, step=0.01, _tiny=1.2e-38):
 
     v = torch.cat([torch.flatten(v) for v in vs])
     h = torch.cat([torch.flatten(h) for h in hs])
-    update_precond_Xmat_math_(a, b, v, h, step=step, tiny=_tiny)       
+    update_precond_Xmat_math_(a, b, v, h, step=step, tiny=_tiny)   
+    #TODO: instead of returning a,b reutn it the way Xilin did UVd its probs faster...
     return a, b
 
 ## Functional form of XMat Precond
