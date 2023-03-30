@@ -628,6 +628,56 @@ def precond_grad_UVd_math(U, V, d, g):
     g = d*IpUVtmatvec(V, U, g)
     return g
 
+## Functional form of UVd Precond
+
+def update_precond_UVd(UVd, vs, hs, step=0.01, _tiny=1.2e-38):
+    # type: (Tensor, List[Tensor], List[Tensor], float, float) -> Tensor
+    """
+    update UVd preconditioner Q = (I + U*V')*diag(d) with
+    vs: a list of vectors;
+    hs: a list of associated Hessian-vector products;
+    step: step size, setting to larger values, say 0.1, if updating is sparse;
+    _tiny: an offset to avoid divided by zero. 
+    
+    It is a wrapped version of function update_precond_UVd_math for easy use. 
+    Also, U, V, and d are transposed (row-major order as Python convention), and 
+    packaged into one tensor. 
+    """ 
+    sizes = [len(UVd)//2]*2 + [1]
+    U, V, d = torch.split(UVd.t(), sizes, dim=1)
+
+    v = torch.cat([torch.flatten(v) for v in vs])
+    h = torch.cat([torch.flatten(h) for h in hs])
+    update_precond_UVd_math_(U, V, d, v[:,None], h[:,None], step=step, tiny=_tiny)
+    return torch.cat([U, V, d], 1).t()
+
+
+#@torch.jit.script
+def precond_grad_UVd(UVd, grads):
+    # type: (Tensor, List[Tensor]) -> List[Tensor]
+    """
+    return preconditioned gradient with UVd preconditioner Q = (I + U*V')*diag(d),
+    and a list of gradients, grads.
+    
+    It is a wrapped version of function precond_grad_UVd_math for easy use.
+    Also, U, V, and d are transposed (row-major order as Python convention), and 
+    packaged into one tensor.
+    """
+    sizes = [len(UVd)//2]*2 + [1]
+    U, V, d = torch.split(UVd.t(), sizes, dim=1)
+
+    # record the sizes and shapes, and then flatten gradients
+    sizes = [torch.numel(g) for g in grads]
+    shapes = [g.shape for g in grads]
+    cumsizes = torch.cumsum(torch.tensor(sizes), 0)
+    
+    grad = torch.cat([torch.flatten(g) for g in grads])
+
+    # precondition gradients
+    pre_grad = precond_grad_UVd_math(U, V, d, grad[:,None])
+
+    # restore gradients to their original shapes
+    return [torch.reshape(pre_grad[j-i:j], s) for (i, j, s) in zip(sizes, cumsizes, shapes)]
 
 class UVd:
     """
@@ -813,6 +863,50 @@ def precond_grad_Xmat_math(a, b, g):
     """
     ab = a * b
     return (a*a + torch.flip(b*b, [0]))*g + (ab + torch.flip(ab, [0]))*torch.flip(g, [0])
+
+
+def update_precond_XMat(a,b, vs, hs, step=0.01, _tiny=1.2e-38):
+    # type: (Tensor, List[Tensor], List[Tensor], float, float) -> Tensor
+    """
+    update XMat preconditioner Q = diag(a) + adiag(b) with
+    vs: a list of vectors;
+    hs: a list of associated Hessian-vector products;
+    step: step size, setting to larger values, say 0.1, if updating is sparse;
+    _tiny: an offset to avoid divided by zero. 
+    
+    It is a wrapped version of function update_precond_XMat_math for easy use. 
+    """ 
+
+    v = torch.cat([torch.flatten(v) for v in vs])
+    h = torch.cat([torch.flatten(h) for h in hs])
+    update_precond_Xmat_math_(a, b, v, h, step=step, tiny=_tiny)       
+    return a, b
+
+## Functional form of XMat Precond
+#@torch.jit.script
+def precond_grad_XMat(a,b, grads):
+    # type: (Tensor, List[Tensor]) -> List[Tensor]
+    """
+    return preconditioned gradient with UVd preconditioner Q = (I + U*V')*diag(d),
+    and a list of gradients, grads.
+    
+    It is a wrapped version of function precond_grad_UVd_math for easy use.
+    Also, U, V, and d are transposed (row-major order as Python convention), and 
+    packaged into one tensor.
+    """
+
+    # record the sizes and shapes, and then flatten gradients
+    sizes = [torch.numel(g) for g in grads]
+    shapes = [g.shape for g in grads]
+    cumsizes = torch.cumsum(torch.tensor(sizes), 0)
+    
+    grad = torch.cat([torch.flatten(g) for g in grads])
+
+    # precondition gradients
+    pre_grad =  precond_grad_Xmat_math(a, b, grad)
+
+    # restore gradients to their original shapes
+    return [torch.reshape(pre_grad[j-i:j], s) for (i, j, s) in zip(sizes, cumsizes, shapes)]
 
 
 class XMat(Optimizer):
