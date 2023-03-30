@@ -2,11 +2,15 @@
 """Created in May, 2018
 Pytorch functions for preconditioned SGD
 @author: XILIN LI, lixilinx@gmail.com
+@author: OMEAD POOLADZANDI, omeadbpooladzandi@gmail.com
 
 Updated in Dec, 2020: 
 Wrapped Kronecker product preconditioner for easy use: the code will select the proper Kronecker product  
 preconditioner based on the formats of input left and right preconditioners.
 Add torch.jit.script decorator by default
+
+Updated in June, 2022: 
+Added UVd and XMat preconditioner using functional and optim class form.
 """
 
 import torch
