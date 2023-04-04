@@ -683,7 +683,7 @@ def precond_grad_UVd(UVd, grads):
     # restore gradients to their original shapes
     return [torch.reshape(pre_grad[j-i:j], s) for (i, j, s) in zip(sizes, cumsizes, shapes)]
 
-class UVd:
+class UVd(Optimizer):
     """
     Implements the low-rank approximation (UVd) preconditioner, Q = (I + U*V')*diag(d), as a class.
 
@@ -744,6 +744,8 @@ class UVd:
         self._V = torch.randn(num_params, rank_of_approximation, dtype=dtype, device=device) / (num_params*rank_of_approximation)**0.5
         self._d = torch.ones( num_params, 1, dtype=dtype, device=device) * preconditioner_init_scale
         self._m = None # momentum buffer 
+        defaults = dict(lr=lr_params)
+        super(UVd, self).__init__(self._params_with_grad, defaults)            
 
 
     @torch.no_grad()
@@ -870,7 +872,7 @@ def precond_grad_Xmat_math(a, b, g):
 
 
 def update_precond_XMat(a,b, vs, hs, step=0.01, _tiny=1.2e-38):
-    # type: (Tensor, List[Tensor], List[Tensor], float, float) -> Tensor
+    # type: (Tensor, Tensor, List[Tensor], List[Tensor], float, float) -> Tensor
     """
     update XMat preconditioner Q = diag(a) + adiag(b) with
     vs: a list of vectors;
@@ -883,14 +885,13 @@ def update_precond_XMat(a,b, vs, hs, step=0.01, _tiny=1.2e-38):
 
     v = torch.cat([torch.flatten(v) for v in vs])
     h = torch.cat([torch.flatten(h) for h in hs])
-    update_precond_Xmat_math_(a, b, v, h, step=step, tiny=_tiny)   
-    #TODO: instead of returning a,b reutn it the way Xilin did UVd its probs faster...
+    update_precond_Xmat_math_(a, b, v, h, step=step, tiny=_tiny)       
     return a, b
 
 ## Functional form of XMat Precond
 #@torch.jit.script
 def precond_grad_XMat(a,b, grads):
-    # type: (Tensor, List[Tensor]) -> List[Tensor]
+
     """
     return preconditioned gradient with UVd preconditioner Q = (I + U*V')*diag(d),
     and a list of gradients, grads.
@@ -901,17 +902,17 @@ def precond_grad_XMat(a,b, grads):
     """
 
     # record the sizes and shapes, and then flatten gradients
-    sizes = [torch.numel(g) for g in grads]
-    shapes = [g.shape for g in grads]
-    cumsizes = torch.cumsum(torch.tensor(sizes), 0)
+    # sizes = [torch.numel(g) for g in grads]
+    # shapes = [g.shape for g in grads]
+    # cumsizes = torch.cumsum(torch.tensor(sizes), 0)
     
     grad = torch.cat([torch.flatten(g) for g in grads])
 
     # precondition gradients
     pre_grad =  precond_grad_Xmat_math(a, b, grad)
-
     # restore gradients to their original shapes
-    return [torch.reshape(pre_grad[j-i:j], s) for (i, j, s) in zip(sizes, cumsizes, shapes)]
+    # return [torch.reshape(pre_grad[j-i:j], s) for (i, j, s) in zip(sizes, cumsizes, shapes)]
+    return torch.reshape(pre_grad,grads.shape)
 
 
 class XMat(Optimizer):
