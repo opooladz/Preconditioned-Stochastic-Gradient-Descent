@@ -6,7 +6,7 @@ We can do other things like run with GRU...
 
 ```
 
-QRNNs not supported yet but would be nice to show QRNN + PSGD can match other RNNs
+<!-- QRNNs not supported yet but would be nice to show QRNN + PSGD can match other RNNs -->
 
 ## run experiments
 
