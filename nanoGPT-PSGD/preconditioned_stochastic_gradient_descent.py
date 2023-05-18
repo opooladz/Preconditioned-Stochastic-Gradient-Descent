@@ -1,3 +1,4 @@
+"""
 Updated in Dec, 2020: 
 Wrapped Kronecker product preconditioner for easy use: the code will select the proper Kronecker product  
 preconditioner based on the formats of input left and right preconditioners.
