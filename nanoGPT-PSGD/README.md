@@ -3,7 +3,7 @@
 We adjust the [nanoGPT](https://github.com/karpathy/nanoGPT) repo to use our PSGD optimizer.
 
 ![nanoGPT PSGD vs AdamW Loss](./psgd_vs_adamw.png)
-
+We see that AdamW initially reduces the loss of nanoGPT at a faster rate than PSGD but ultimetly converges to a worse solution on the OpenWebText dataset.
 # nanoGPT
 
 <!-- ![nanoGPT](assets/nanogpt.jpg) -->
