@@ -1,8 +1,6 @@
 #@title Default title text
 """Created in May, 2018
 Pytorch functions for preconditioned SGD
-@author: XILIN LI, lixilinx@gmail.com
-@author: OMEAD POOLADZANDI, omeadbpooladzandi@gmail.com
 
 Updated in Dec, 2020: 
 Wrapped Kronecker product preconditioner for easy use: the code will select the proper Kronecker product  
