@@ -39,5 +39,6 @@ If you want to run the Noisy experiments from the paer that uses proir informati
 
 ### Dataset Setup:
 Download the Neural Tangent Generalization Attacks [Dataset](https://drive.google.com/drive/folders/1OD54_gK6wnhyVwQGnHs7vIsKVOL-48zd?usp=share_link) and put it in the datasets folder.
+
 Follow other readme files for each respective folder
 
