@@ -1,6 +1,6 @@
 # Preconditioned-Stochastic-Gradient-Descent
 
-
+For paper Main and Appendix see [Curvature-Informed SGD via General Purpose Lie-Group Preconditioners](./Curvature_Informed_SGD_via_General_Purpose_Lie_Group_Preconditioners_Main___Appendix.pdf)
 
 ### Quick Guide
 
