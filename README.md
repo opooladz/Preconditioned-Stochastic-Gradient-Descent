@@ -63,28 +63,8 @@ Download the Neural Tangent Generalization Attacks [Dataset](https://drive.googl
 ### TODO
 * Integrate Trace of FID
 * Integrate entropy max margin and forgetting 
-* Add GPT experiments
-* Add RL Experiments
-* LLamA -- G or Meta's new LLM is around the same size as GPT2 would be REALLY nice if we could get results for that since its newer...
-* Integrate SplitResNet results and do analysis...
-* Lets get threshSGD integrated -- use subset instead of zeroing out the loss....
-* do threshPSGD tests
-* add SimCLR 
-* add ConvMix
-* add ViT 
-* add NAS
-* Add FFCV
-
-
-### Ideas
-* Coresets via trace of FIM?
-* so many more things.... 
-
-
-### Stats to colletct
-* Forgettability 
-* entropy 
-* margin 
-* Tr(FIM) both ways 
-* Spearman r between entropy/margin orderings and forgettability score
-* everything else we talked about
+* Add RL Experiments & Results
+* add SimCLR Experiments & Results
+* add ConvMix Experiments & Results
+* add ViT Experiments & Results
+* add NAS Experiments & Results
