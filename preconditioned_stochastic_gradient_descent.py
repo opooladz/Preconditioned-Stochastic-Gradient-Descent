@@ -4,13 +4,16 @@ Pytorch functions for preconditioned SGD
 @author: XILIN LI, lixilinx@gmail.com
 @author: OMEAD POOLADZANDI, omeadbpooladzandi@gmail.com
 
-Updated in Dec, 2020: 
-Wrapped Kronecker product preconditioner for easy use: the code will select the proper Kronecker product  
+Updated in Dec, 2020:
+Wrapped Kronecker product preconditioner for easy use: the code will select the proper Kronecker product
 preconditioner based on the formats of input left and right preconditioners.
 Add torch.jit.script decorator by default
 
-Updated in June, 2022: 
+Updated in June, 2022:
 Added UVd and XMat preconditioner using functional and optim class form.
+
+Updated in Aug, 2023:
+Added UVd directional finite difference flag.
 """
 
 import torch
@@ -22,22 +25,22 @@ def update_precond_dense(Q, dxs, dgs, step=0.01, _tiny=1.2e-38):
     # type: (Tensor, List[Tensor], List[Tensor], float, float) -> Tensor
     """
     update dense preconditioner P = Q^T*Q
-    Q: Cholesky factor of preconditioner with positive diagonal entries 
+    Q: Cholesky factor of preconditioner with positive diagonal entries
     dxs: list of perturbations of parameters
     dgs: list of perturbations of gradients
-    step: update step size normalized to range [0, 1] 
-    _tiny: an offset to avoid division by zero 
+    step: update step size normalized to range [0, 1]
+    _tiny: an offset to avoid division by zero
     """
     dx = torch.cat([torch.reshape(x, [-1, 1]) for x in dxs])
     dg = torch.cat([torch.reshape(g, [-1, 1]) for g in dgs])
-    
+
     a = Q.mm(dg)
     #b = torch.triangular_solve(dx, Q, upper=True, transpose=True)[0]
     b = torch.linalg.solve_triangular(Q.t(), dx, upper=False)
 
     grad = torch.triu(a.mm(a.t()) - b.mm(b.t()))
-    step0 = step/(grad.abs().max() + _tiny)        
-        
+    step0 = step/(grad.abs().max() + _tiny)
+
     return Q - step0*grad.mm(Q)
 
 @torch.jit.script
@@ -52,13 +55,13 @@ def precond_grad_dense(Q, grads):
     lens = [g.shape[0] for g in grad]
     grad = torch.cat(grad)
     grad = Q.t().mm(Q.mm(grad))
-    
+
     pre_grads = []
     idx = 0
     for i in range(len(grads)):
         pre_grads.append(torch.reshape(grad[idx : idx + lens[i]], grads[i].shape))
         idx = idx + lens[i]
-        
+
     return pre_grads
 
 
@@ -70,7 +73,7 @@ def update_precond_kron(Ql, Qr, dX, dG, step=0.01, _tiny=1.2e-38):
     dX: perturbation of (matrix) parameter
     dG: perturbation of (matrix) gradient
     step: update step size
-    _tiny: an offset to avoid division by zero 
+    _tiny: an offset to avoid division by zero
     """
     m, n = Ql.shape
     p, q = Qr.shape
@@ -99,8 +102,8 @@ def update_precond_kron(Ql, Qr, dX, dG, step=0.01, _tiny=1.2e-38):
             raise Exception('Unknown Kronecker product preconditioner')
     else:
         raise Exception('Unknown Kronecker product preconditioner')
- 
-       
+
+
 def precond_grad_kron(Ql, Qr, Grad):
     """
     return preconditioned gradient using Kronecker product preconditioner P = kron_prod(Qr^T*Qr, Ql^T*Ql)
@@ -134,7 +137,7 @@ def precond_grad_kron(Ql, Qr, Grad):
             raise Exception('Unknown Kronecker product preconditioner')
     else:
         raise Exception('Unknown Kronecker product preconditioner')
-        
+
 
 ###############################################################################
 @torch.jit.script
@@ -146,30 +149,30 @@ def _update_precond_dense_dense(Ql, Qr, dX, dG, step=0.01, _tiny=1.2e-38):
     Qr: (right side) Cholesky factor of preconditioner with positive diagonal entries
     dX: perturbation of (matrix) parameter
     dG: perturbation of (matrix) gradient
-    step: update step size normalized to range [0, 1] 
-    _tiny: an offset to avoid division by zero 
+    step: update step size normalized to range [0, 1]
+    _tiny: an offset to avoid division by zero
     """
     max_l = torch.max(torch.diag(Ql))
     max_r = torch.max(torch.diag(Qr))
-    
+
     rho = torch.sqrt(max_l/max_r)
     Ql /= rho
     Qr *= rho
-    
+
     #A = Ql.mm( dG.mm( Qr.t() ) )
-    #Bt = torch.triangular_solve((torch.triangular_solve(dX.t(), Qr, upper=True, transpose=True))[0].t(), 
+    #Bt = torch.triangular_solve((torch.triangular_solve(dX.t(), Qr, upper=True, transpose=True))[0].t(),
     #                 Ql, upper=True, transpose=True)[0]
     A = torch.linalg.multi_dot([Ql, dG, Qr.t()])
     Bt = torch.linalg.solve_triangular(Ql.t(), torch.linalg.solve_triangular(Qr, dX, upper=True, left=False), upper=False)
-    
+
     grad1 = torch.triu(A.mm(A.t()) - Bt.mm(Bt.t()))
     grad2 = torch.triu(A.t().mm(A) - Bt.t().mm(Bt))
-    
+
     step1 = step/(torch.max(torch.abs(grad1)) + _tiny)
     step2 = step/(torch.max(torch.abs(grad2)) + _tiny)
-        
+
     return Ql - step1*grad1.mm(Ql), Qr - step2*grad2.mm(Qr)
-    
+
 @torch.jit.script
 def _precond_grad_dense_dense(Ql, Qr, Grad):
     # type: (Tensor, Tensor, Tensor) -> Tensor
@@ -181,7 +184,7 @@ def _precond_grad_dense_dense(Ql, Qr, Grad):
     """
     #return torch.chain_matmul(Ql.t(), Ql, Grad, Qr.t(), Qr)
     return torch.linalg.multi_dot([Ql.t(), Ql, Grad, Qr.t(), Qr])
-    
+
 
 ###############################################################################
 # (normalization, dense) format Kronecker product preconditioner
@@ -197,62 +200,62 @@ def _update_precond_norm_dense(ql, Qr, dX, dG, step=0.01, _tiny=1.2e-38):
     ql[1,0:-1] is the last column of Ql, excluding the last entry
     dX is perturbation of (matrix) parameter
     dG is perturbation of (matrix) gradient
-    step: update step size normalized to range [0, 1] 
-    _tiny: an offset to avoid division by zero  
+    step: update step size normalized to range [0, 1]
+    _tiny: an offset to avoid division by zero
     """
     # make sure that Ql and Qr have similar dynamic range
     max_l = torch.max(ql[0])
-    max_r = torch.max(torch.diag(Qr))  
+    max_r = torch.max(torch.diag(Qr))
     rho = torch.sqrt(max_l/max_r)
     ql /= rho
     Qr *= rho
-    
+
     # refer to https://arxiv.org/abs/1512.04202 for details
-    A = ql[0:1].t()*dG + ql[1:].t().mm( dG[-1:] ) # Ql*dG 
+    A = ql[0:1].t()*dG + ql[1:].t().mm( dG[-1:] ) # Ql*dG
     A = A.mm(Qr.t())
-    
+
     Bt = dX/ql[0:1].t()
     Bt[-1:] -= (ql[1:]/(ql[0:1]*ql[0,-1])).mm(dX)
     #Bt = torch.triangular_solve(Bt.t(), Qr, upper=True, transpose=True)[0].t()
     Bt = torch.linalg.solve_triangular(Qr, Bt, upper=True, left=False)
-    
-    grad1_diag = torch.sum(A*A, dim=1) - torch.sum(Bt*Bt, dim=1)
-    grad1_bias = A[:-1].mm(A[-1:].t()) - Bt[:-1].mm(Bt[-1:].t()) 
-    grad1_bias = torch.cat([torch.squeeze(grad1_bias), grad1_bias.new_zeros(1)])  
 
-    step1 = step/(torch.max(torch.max(torch.abs(grad1_diag)), 
+    grad1_diag = torch.sum(A*A, dim=1) - torch.sum(Bt*Bt, dim=1)
+    grad1_bias = A[:-1].mm(A[-1:].t()) - Bt[:-1].mm(Bt[-1:].t())
+    grad1_bias = torch.cat([torch.squeeze(grad1_bias), grad1_bias.new_zeros(1)])
+
+    step1 = step/(torch.max(torch.max(torch.abs(grad1_diag)),
                             torch.max(torch.abs(grad1_bias))) + _tiny)
     new_ql0 = ql[0] - step1*grad1_diag*ql[0]
     new_ql1 = ql[1] - step1*(grad1_diag*ql[1] + ql[0,-1]*grad1_bias)
-    
+
     grad2 = torch.triu(A.t().mm(A) - Bt.t().mm(Bt))
     step2 = step/(torch.max(torch.abs(grad2)) + _tiny)
-    
+
     return torch.stack((new_ql0, new_ql1)), Qr - step2*grad2.mm(Qr)
 
 @torch.jit.script
 def _precond_grad_norm_dense(ql, Qr, Grad):
     # type: (Tensor, Tensor, Tensor) -> Tensor
     """
-    return preconditioned gradient using (normalization, dense) Kronecker product preconditioner 
+    return preconditioned gradient using (normalization, dense) Kronecker product preconditioner
     Suppose Grad has shape (M, N)
     ql[0] is the diagonal part of Ql
     ql[1, 0:-1] is the last column of Ql, excluding the last entry
     Qr: shape (N, N), Cholesky factor of right preconditioner
     Grad: (matrix) gradient
     """
-    preG = ql[0:1].t()*Grad + ql[1:].t().mm(Grad[-1:]) # Ql*Grad 
+    preG = ql[0:1].t()*Grad + ql[1:].t().mm(Grad[-1:]) # Ql*Grad
     #preG = torch.chain_matmul(preG, Qr.t(), Qr)
     preG = torch.linalg.multi_dot([preG, Qr.t(), Qr])
     add_last_row = ql[1:].mm(preG) # use it to modify the last row
     preG *= ql[0:1].t()
     preG[-1:] += add_last_row
-    
+
     return preG
 
 
 ###############################################################################
-# (normalization, scaling) Kronecker product preconditioner 
+# (normalization, scaling) Kronecker product preconditioner
 # the left one is a normalization preconditioner; the right one is a scaling preconditioner
 @torch.jit.script
 def _update_precond_norm_scale(ql, qr, dX, dG, step=0.01, _tiny=1.2e-38):
@@ -268,7 +271,7 @@ def _update_precond_norm_scale(ql, qr, dX, dG, step=0.01, _tiny=1.2e-38):
     dX is perturbation of (matrix) parameter
     dG is perturbation of (matrix) gradient
     step: update step size
-    _tiny: an offset to avoid division by zero  
+    _tiny: an offset to avoid division by zero
     """
     # make sure that Ql and Qr have similar dynamic range
     max_l = torch.max(ql[0])
@@ -276,27 +279,27 @@ def _update_precond_norm_scale(ql, qr, dX, dG, step=0.01, _tiny=1.2e-38):
     rho = torch.sqrt(max_l/max_r)
     ql /= rho
     qr *= rho
-    
+
     # refer to https://arxiv.org/abs/1512.04202 for details
-    A = ql[0:1].t()*dG + ql[1:].t().mm( dG[-1:] ) # Ql*dG 
-    A *= qr # Ql*dG*Qr 
-    
+    A = ql[0:1].t()*dG + ql[1:].t().mm( dG[-1:] ) # Ql*dG
+    A *= qr # Ql*dG*Qr
+
     Bt = dX/ql[0:1].t()
     Bt[-1:] -= (ql[1:]/(ql[0:1]*ql[0,-1])).mm(dX)
-    Bt /= qr # Ql^(-T)*dX*Qr^(-1) 
-    
-    grad1_diag = torch.sum(A*A, dim=1) - torch.sum(Bt*Bt, dim=1)
-    grad1_bias = A[:-1].mm(A[-1:].t()) - Bt[:-1].mm(Bt[-1:].t()) 
-    grad1_bias = torch.cat([torch.squeeze(grad1_bias), grad1_bias.new_zeros(1)])  
+    Bt /= qr # Ql^(-T)*dX*Qr^(-1)
 
-    step1 = step/(torch.max(torch.max(torch.abs(grad1_diag)), 
+    grad1_diag = torch.sum(A*A, dim=1) - torch.sum(Bt*Bt, dim=1)
+    grad1_bias = A[:-1].mm(A[-1:].t()) - Bt[:-1].mm(Bt[-1:].t())
+    grad1_bias = torch.cat([torch.squeeze(grad1_bias), grad1_bias.new_zeros(1)])
+
+    step1 = step/(torch.max(torch.max(torch.abs(grad1_diag)),
                             torch.max(torch.abs(grad1_bias))) + _tiny)
     new_ql0 = ql[0] - step1*grad1_diag*ql[0]
     new_ql1 = ql[1] - step1*(grad1_diag*ql[1] + ql[0,-1]*grad1_bias)
-    
+
     grad2 = torch.sum(A*A, dim=0, keepdim=True) - torch.sum(Bt*Bt, dim=0, keepdim=True)
     step2 = step/(torch.max(torch.abs(grad2)) + _tiny)
-    
+
     return torch.stack((new_ql0, new_ql1)), qr - step2*grad2*qr
 
 @torch.jit.script
@@ -305,19 +308,19 @@ def _precond_grad_norm_scale(ql, qr, Grad):
     """
     return preconditioned gradient using (normalization, scaling) Kronecker product preconditioner
     Suppose Grad has shape (M, N)
-    ql has shape (2, M) 
-    qr has shape (1, N) 
+    ql has shape (2, M)
+    qr has shape (1, N)
     ql[0] is the diagonal part of Ql
     ql[1, 0:-1] is the last column of Ql, excluding the last entry
     qr is the diagonal part of Qr
     Grad: (matrix) gradient
     """
-    preG = ql[0:1].t()*Grad + ql[1:].t().mm(Grad[-1:]) # Ql*Grad 
+    preG = ql[0:1].t()*Grad + ql[1:].t().mm(Grad[-1:]) # Ql*Grad
     preG *= (qr*qr) # Ql*Grad*Qr^T*Qr
     add_last_row = ql[1:].mm(preG) # use it to modify the last row
     preG *= ql[0:1].t()
     preG[-1:] += add_last_row
-    
+
     return preG
 
 
@@ -334,27 +337,27 @@ def _update_precond_dense_scale(Ql, qr, dX, dG, step=0.01, _tiny=1.2e-38):
     dX is perturbation of (matrix) parameter
     dG is perturbation of (matrix) gradient
     step: update step size
-    _tiny: an offset to avoid division by zero 
+    _tiny: an offset to avoid division by zero
     """
     max_l = torch.max(torch.diag(Ql))
     max_r = torch.max(qr)
-    
+
     rho = torch.sqrt(max_l/max_r)
     Ql /= rho
     qr *= rho
-    
+
     A = Ql.mm( dG*qr )
     #Bt = torch.triangular_solve(dX/qr, Ql, upper=True, transpose=True)[0]
     Bt = torch.linalg.solve_triangular(Ql.t(), dX/qr, upper=False)
-    
+
     grad1 = torch.triu(A.mm(A.t()) - Bt.mm(Bt.t()))
     grad2 = torch.sum(A*A, dim=0, keepdim=True) - torch.sum(Bt*Bt, dim=0, keepdim=True)
-    
+
     step1 = step/(torch.max(torch.abs(grad1)) + _tiny)
     step2 = step/(torch.max(torch.abs(grad2)) + _tiny)
-        
+
     return Ql - step1*grad1.mm(Ql), qr - step2*grad2*qr
-    
+
 @torch.jit.script
 def _precond_grad_dense_scale(Ql, qr, Grad):
     # type: (Tensor, Tensor, Tensor) -> Tensor
@@ -370,12 +373,12 @@ def _precond_grad_dense_scale(Ql, qr, Grad):
 
 
 
-###############################################################################   
-@torch.jit.script                     
+###############################################################################
+@torch.jit.script
 def update_precond_splu(L12, l3, U12, u3, dxs, dgs, step=0.01, _tiny=1.2e-38):
     # type: (Tensor,Tensor,Tensor,Tensor, List[Tensor],List[Tensor], float,float) -> Tuple[Tensor,Tensor,Tensor,Tensor]
     """
-    update sparse LU preconditioner P = Q^T*Q, where 
+    update sparse LU preconditioner P = Q^T*Q, where
     Q = L*U,
     L12 = [L1; L2]
     U12 = [U1, U2]
@@ -384,8 +387,8 @@ def update_precond_splu(L12, l3, U12, u3, dxs, dgs, step=0.01, _tiny=1.2e-38):
     l3 and u3 are column vectors
     dxs: a list of random perturbation on parameters
     dgs: a list of resultant perturbation on gradients
-    step: update step size normalized to range [0, 1] 
-    _tiny: an offset to avoid division by zero 
+    step: update step size normalized to range [0, 1]
+    _tiny: an offset to avoid division by zero
     """
     # make sure that L and U have similar dynamic range
     max_l = torch.max(torch.max(torch.diag(L12)), torch.max(l3))
@@ -395,17 +398,17 @@ def update_precond_splu(L12, l3, U12, u3, dxs, dgs, step=0.01, _tiny=1.2e-38):
     l3 /= rho
     U12 *= rho
     u3 *= rho
-    
+
     # extract the blocks
     r = U12.shape[0]
     L1 = L12[:r]
     L2 = L12[r:]
     U1 = U12[:, :r]
     U2 = U12[:, r:]
-    
+
     dx = torch.cat([torch.reshape(x, [-1, 1]) for x in dxs]) # a tall column vector
     dg = torch.cat([torch.reshape(g, [-1, 1]) for g in dgs]) # a tall column vector
-    
+
     # U*dg
     Ug1 = U1.mm(dg[:r]) + U2.mm(dg[r:])
     Ug2 = u3*dg[r:]
@@ -434,7 +437,7 @@ def update_precond_splu(L12, l3, U12, u3, dxs, dgs, step=0.01, _tiny=1.2e-38):
     iPx2 = iLiQtx2/u3
     #iPx1 = torch.triangular_solve(iLiQtx1 - U2.mm(iPx2), U1, upper=True)[0]
     iPx1 = torch.linalg.solve_triangular(U1, iLiQtx1 - U2.mm(iPx2), upper=True)
-    
+
     # update L
     grad1 = Qg1.mm(Qg1.t()) - iQtx1.mm(iQtx1.t())
     grad1 = torch.tril(grad1)
@@ -468,7 +471,7 @@ def precond_grad_splu(L12, l3, U12, u3, grads):
     # type: (Tensor,Tensor,Tensor,Tensor, List[Tensor]) -> List[Tensor]
     """
     return preconditioned gradient with sparse LU preconditioner
-    where P = Q^T*Q, 
+    where P = Q^T*Q,
     Q = L*U,
     L12 = [L1; L2]
     U12 = [U1, U2]
@@ -480,13 +483,13 @@ def precond_grad_splu(L12, l3, U12, u3, grads):
     grad = [torch.reshape(g, [-1, 1]) for g in grads] # a list of column vector
     lens = [g.shape[0] for g in grad] # length of each column vector
     grad = torch.cat(grad)  # a tall column vector
-    
+
     r = U12.shape[0]
     L1 = L12[:r]
     L2 = L12[r:]
     U1 = U12[:, :r]
-    U2 = U12[:, r:]    
-    
+    U2 = U12[:, r:]
+
     # U*g
     Ug1 = U1.mm(grad[:r]) + U2.mm(grad[r:])
     Ug2 = u3*grad[r:]
@@ -499,13 +502,13 @@ def precond_grad_splu(L12, l3, U12, u3, grads):
     # P*g
     pre_grad = torch.cat([U1.t().mm(LtQg1),
                           U2.t().mm(LtQg1) + u3*LtQg2])
-    
+
     pre_grads = [] # restore pre_grad to its original shapes
     idx = 0
     for i in range(len(grads)):
         pre_grads.append(torch.reshape(pre_grad[idx : idx + lens[i]], grads[i].shape))
         idx = idx + lens[i]
-    
+
     return pre_grads
 
 
@@ -519,17 +522,17 @@ def precond_grad_splu(L12, l3, U12, u3, grads):
 # which, after reparameterization, is equivalent to form
 #
 #   diag(d) + U*V'
-# 
-# It relates to the LM-BFGS and conjugate gradient methods. 
 #
-# The JIT decorator can be enabled if helps. 
-# 
+# It relates to the LM-BFGS and conjugate gradient methods.
+#
+# The JIT decorator can be enabled if helps.
+#
 
 #@torch.jit.script
 def IpUVtmatvec(U, V, x):
     # type: (Tensor, Tensor, Tensor) -> Tensor
     """
-    Returns (I + U*V')*x. All variables are either matrices or column vectors. 
+    Returns (I + U*V')*x. All variables are either matrices or column vectors.
     """
     return x + U.mm(V.t().mm(x))
 
@@ -543,7 +546,7 @@ def IpUVtmatvec(U, V, x):
 
 # def norm_UVt(U, V):
 #     """
-#     Returns ||U*V'||_fro = sqrt(tr(U'*U*V'*V)) = sqrt(sum((U'*U)*(V'*V))) 
+#     Returns ||U*V'||_fro = sqrt(tr(U'*U*V'*V)) = sqrt(sum((U'*U)*(V'*V)))
 #     """
 #     return torch.sqrt(torch.abs(torch.sum( (U.t().mm(U))*(V.t().mm(V)) )))
 
@@ -552,11 +555,11 @@ def update_precond_UVd_math_(U, V, d, v, h, step, tiny):
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, float, float) -> None
     """
     Update preconditioner Q = (I + U*V')*diag(d) with (vector, Hessian-vector product) = (v, h).
-    State variables U, V and d are updated inplace. 
-                               
-    U, V, d, v, and h are either matrices or column vectors.  
+    State variables U, V and d are updated inplace.
+
+    U, V, d, v, and h are either matrices or column vectors.
     """
-    # balance the numerical dynamic ranges of U and V; optional 
+    # balance the numerical dynamic ranges of U and V; optional
     if torch.rand([]) < 0.01:
         normU = torch.linalg.vector_norm(U)
         normV = torch.linalg.vector_norm(V)
@@ -566,7 +569,7 @@ def update_precond_UVd_math_(U, V, d, v, h, step, tiny):
 
     Qh = IpUVtmatvec(U, V, d*h)
     Ph = d*IpUVtmatvec(V, U, Qh)
-    
+
     # invQtv = IpUVtsolve(V, U, v/d)
     # invPv = IpUVtsolve(U, V, invQtv)/d
     VtU = V.t().mm(U)
@@ -574,7 +577,7 @@ def update_precond_UVd_math_(U, V, d, v, h, step, tiny):
     IpVtU = I + VtU
     invQtv = v/d
     # torch's linalg.solve is slow for small matrix
-    invQtv = invQtv - V.mm(torch.linalg.solve(IpVtU.t(), U.t().mm(invQtv)))  
+    invQtv = invQtv - V.mm(torch.linalg.solve(IpVtU.t(), U.t().mm(invQtv)))
     invPv  = invQtv - U.mm(torch.linalg.solve(IpVtU,     V.t().mm(invQtv)))
     invPv = invPv/d
 
@@ -582,7 +585,7 @@ def update_precond_UVd_math_(U, V, d, v, h, step, tiny):
     mu = step/(torch.max(torch.abs(nablaD)) + tiny)
     #d = d - mu*d*nablaD
     d.sub_(mu*d*nablaD)
-    
+
     # update either U or V, not both at the same time
     a, b = Qh, invQtv
     if torch.rand([]) < 0.5:
@@ -593,13 +596,13 @@ def update_precond_UVd_math_(U, V, d, v, h, step, tiny):
         atVVt = atV.mm(V.t())
         btV = b.t().mm(V)
         btVVt = btV.mm(V.t())
-        norm = torch.sqrt(torch.abs( (a.t().mm(a))*(atVVt.mm(atVVt.t())) # abs to avoid sqrt(-0.0) 
-                                    +(b.t().mm(b))*(btVVt.mm(btVVt.t())) 
+        norm = torch.sqrt(torch.abs( (a.t().mm(a))*(atVVt.mm(atVVt.t())) # abs to avoid sqrt(-0.0)
+                                    +(b.t().mm(b))*(btVVt.mm(btVVt.t()))
                                   -2*(a.t().mm(b))*(atVVt.mm(btVVt.t())) ))
         mu = step/(norm + tiny)
-        # U = U - mu*( a.mm(atV.mm(IpVtU)) 
+        # U = U - mu*( a.mm(atV.mm(IpVtU))
         #             -b.mm(btV.mm(IpVtU)) )
-        U.sub_(mu*( a.mm(atV.mm(IpVtU)) 
+        U.sub_(mu*( a.mm(atV.mm(IpVtU))
                    -b.mm(btV.mm(IpVtU)) ))
     else:
         # nablaV = Qh.mm(Qh.t().mm(U)) - invQtv.mm(invQtv.t().mm(U))
@@ -613,9 +616,9 @@ def update_precond_UVd_math_(U, V, d, v, h, step, tiny):
                                     +(UUtb.t().mm(UUtb))*(b.t().mm(b))
                                   -2*(UUta.t().mm(UUtb))*(a.t().mm(b)) ))
         mu = step/(norm + tiny)
-        # V = V - mu*( (a + V.mm(atU.t())).mm(atU) 
+        # V = V - mu*( (a + V.mm(atU.t())).mm(atU)
         #             -(b + V.mm(btU.t())).mm(btU) )
-        V.sub_(mu*( (a + V.mm(atU.t())).mm(atU) 
+        V.sub_(mu*( (a + V.mm(atU.t())).mm(atU)
                    -(b + V.mm(btU.t())).mm(btU) ))
 
     # return [U, V, d]
@@ -625,8 +628,8 @@ def precond_grad_UVd_math(U, V, d, g):
     # type: (Tensor, Tensor, Tensor, Tensor) -> Tensor
     """
     Preconditioning gradient g with Q = (I + U*V')*diag(d).
-                                         
-    All variables here are either matrices or column vectors. 
+
+    All variables here are either matrices or column vectors.
     """
     g = IpUVtmatvec(U, V, d*g)
     g = d*IpUVtmatvec(V, U, g)
@@ -641,12 +644,12 @@ def update_precond_UVd(UVd, vs, hs, step=0.01, _tiny=1.2e-38):
     vs: a list of vectors;
     hs: a list of associated Hessian-vector products;
     step: step size, setting to larger values, say 0.1, if updating is sparse;
-    _tiny: an offset to avoid divided by zero. 
-    
-    It is a wrapped version of function update_precond_UVd_math for easy use. 
-    Also, U, V, and d are transposed (row-major order as Python convention), and 
-    packaged into one tensor. 
-    """ 
+    _tiny: an offset to avoid divided by zero.
+
+    It is a wrapped version of function update_precond_UVd_math for easy use.
+    Also, U, V, and d are transposed (row-major order as Python convention), and
+    packaged into one tensor.
+    """
     sizes = [len(UVd)//2]*2 + [1]
     U, V, d = torch.split(UVd.t(), sizes, dim=1)
 
@@ -662,9 +665,9 @@ def precond_grad_UVd(UVd, grads):
     """
     return preconditioned gradient with UVd preconditioner Q = (I + U*V')*diag(d),
     and a list of gradients, grads.
-    
+
     It is a wrapped version of function precond_grad_UVd_math for easy use.
-    Also, U, V, and d are transposed (row-major order as Python convention), and 
+    Also, U, V, and d are transposed (row-major order as Python convention), and
     packaged into one tensor.
     """
     sizes = [len(UVd)//2]*2 + [1]
@@ -674,7 +677,7 @@ def precond_grad_UVd(UVd, grads):
     sizes = [torch.numel(g) for g in grads]
     shapes = [g.shape for g in grads]
     cumsizes = torch.cumsum(torch.tensor(sizes), 0)
-    
+
     grad = torch.cat([torch.flatten(g) for g in grads])
 
     # precondition gradients
@@ -700,30 +703,30 @@ class UVd(Optimizer):
                                     and False for approximate one via finite-difference formulae.
 
     Notes:
-        Note 1: The Hessian-vector product can be approximated using the finite-difference formulae by setting 
+        Note 1: The Hessian-vector product can be approximated using the finite-difference formulae by setting
         exact_hessian_vector_product = False when the 2nd derivatives is not available.
-        In this case, make sure that the closure produces the same outputs given the same inputs, 
+        In this case, make sure that the closure produces the same outputs given the same inputs,
         except for numerical errors due to non-deterministic behaviors.
         Random numbers, if any, used inside the closure should be generated starting from the same state, where the rng state can be
         read and set by, e.g., `torch.cuda.get_rng_state' and `torch.cuda.set_rng_state', respectively.
-        
+
         Note 2: Momentum here is the moving average of gradient so that its setting is decoupled from the learning rate.
-        This is necessary as the learning rate in PSGD is normalized. 
+        This is necessary as the learning rate in PSGD is normalized.
 
         Note 3: `torch.linalg.solve' is called twice in function `update_precond_UVd_math_'.
         Certain solver could be orders of magnitude faster than others, especially for small matrices (see the pdf file).
         Considering replace it with faster ones if the default solver is too slow.
 
-        Note 4: Currently, no support of sparse and mixed-precision gradients. 
-        Half precision is supported except that torch.linalg.solve (v1.12) requires casting float16 to float32.    
-        
-        Note 5: lr_params, lr_preconditioner, momentum, grad_clip_max_norm, preconditioner_update_probability, and 
-        exact_hessian_vector_product (bool) all can be reset on the fly. 
+        Note 4: Currently, no support of sparse and mixed-precision gradients.
+        Half precision is supported except that torch.linalg.solve (v1.12) requires casting float16 to float32.
+
+        Note 5: lr_params, lr_preconditioner, momentum, grad_clip_max_norm, preconditioner_update_probability, and
+        exact_hessian_vector_product (bool) all can be reset on the fly.
     """
     def __init__(self,  params_with_grad, rank_of_approximation:int=10, preconditioner_init_scale=1.0,
                         lr_params=0.01, lr_preconditioner=0.01, momentum=0.0,
                         grad_clip_max_norm=None, preconditioner_update_probability=1.0,
-                        exact_hessian_vector_product:bool=True):
+                        exact_hessian_vector_product:bool=True, directional = 1):
         # mutable members
         self.lr_params = lr_params
         self.lr_preconditioner = lr_preconditioner
@@ -731,6 +734,7 @@ class UVd(Optimizer):
         self.grad_clip_max_norm = grad_clip_max_norm
         self.preconditioner_update_probability = preconditioner_update_probability
         self.exact_hessian_vector_product = exact_hessian_vector_product
+        self.directional = directional
         # protected members
         params_with_grad = [params_with_grad,] if isinstance(params_with_grad, torch.Tensor) else params_with_grad
         self._params_with_grad = [param for param in params_with_grad if param.requires_grad] # double check requires_grad flag
@@ -743,22 +747,22 @@ class UVd(Optimizer):
         self._U = torch.randn(num_params, rank_of_approximation, dtype=dtype, device=device) / (num_params*rank_of_approximation)**0.5
         self._V = torch.randn(num_params, rank_of_approximation, dtype=dtype, device=device) / (num_params*rank_of_approximation)**0.5
         self._d = torch.ones( num_params, 1, dtype=dtype, device=device) * preconditioner_init_scale
-        self._m = None # momentum buffer 
+        self._m = None # momentum buffer
         defaults = dict(lr=lr_params)
-        super(UVd, self).__init__(self._params_with_grad, defaults)            
+        super(UVd, self).__init__(self._params_with_grad, defaults)
 
 
     @torch.no_grad()
     def step(self, closure):
         """
-        Performs a single step of PSGD with low-rank approximation (UVd) preconditioner, i.e., 
+        Performs a single step of PSGD with low-rank approximation (UVd) preconditioner, i.e.,
         updating the trainable parameters once, and returning what closure returns.
 
         Args:
             closure (callable): a closure that evaluates the function of self._params_with_grad,
                                 and returns the loss, or an iterable with the first one being loss.
-                                Random numbers, if any, used inside the closure should be generated starting 
-                                from the same rng state if self.exact_hessian_vector_product = False; otherwise doesn't matter. 
+                                Random numbers, if any, used inside the closure should be generated starting
+                                from the same rng state if self.exact_hessian_vector_product = False; otherwise doesn't matter.
         """
         if torch.rand([]) < self.preconditioner_update_probability:
             # evaluates gradients, Hessian-vector product, and updates the preconditioner
@@ -776,7 +780,10 @@ class UVd(Optimizer):
                     closure_returns = closure()
                     loss = closure_returns if isinstance(closure_returns, torch.Tensor) else closure_returns[0]
                     grads = torch.autograd.grad(loss, self._params_with_grad)
-                vs = [self._delta_param_scale * torch.randn_like(param) for param in self._params_with_grad]
+                if self.directional == 1:
+                  vs = [self._delta_param_scale * torch.randn_like(param) for param in self._params_with_grad]
+                else:
+                  vs = [self._delta_param_scale * (1 + torch.abs(param)) * torch.randn_like(param) for param in self._params_with_grad]
                 [param.add_(v) for (param, v) in zip(self._params_with_grad, vs)]
                 with torch.enable_grad():
                     perturbed_returns = closure()
@@ -809,16 +816,16 @@ class UVd(Optimizer):
                 self._m.mul_(self.momentum).add_((1 - self.momentum)*grad)
             pre_grad = precond_grad_UVd_math(self._U, self._V, self._d, self._m[:, None])
         else:
-            self._m = None # clean the buffer when momentum is set to zero 
+            self._m = None # clean the buffer when momentum is set to zero
             pre_grad = precond_grad_UVd_math(self._U, self._V, self._d, grad[:, None])
-            
+
         # gradient clipping is optional
         if self.grad_clip_max_norm is None:
             lr = self.lr_params
         else:
             grad_norm = torch.linalg.vector_norm(pre_grad) + self._tiny
             lr = self.lr_params * min(self.grad_clip_max_norm/grad_norm, 1.0)
-            
+
         # update the parameters
         if self.exact_hessian_vector_product or (vs is None):
             [param.subtract_(lr * pre_grad[j - i:j].view_as(param))
@@ -878,14 +885,14 @@ def update_precond_XMat(a,b, vs, hs, step=0.01, _tiny=1.2e-38):
     vs: a list of vectors;
     hs: a list of associated Hessian-vector products;
     step: step size, setting to larger values, say 0.1, if updating is sparse;
-    _tiny: an offset to avoid divided by zero. 
-    
-    It is a wrapped version of function update_precond_XMat_math for easy use. 
-    """ 
+    _tiny: an offset to avoid divided by zero.
+
+    It is a wrapped version of function update_precond_XMat_math for easy use.
+    """
 
     v = torch.cat([torch.flatten(v) for v in vs])
     h = torch.cat([torch.flatten(h) for h in hs])
-    update_precond_Xmat_math_(a, b, v, h, step=step, tiny=_tiny)       
+    update_precond_Xmat_math_(a, b, v, h, step=step, tiny=_tiny)
     return a, b
 
 ## Functional form of XMat Precond
@@ -895,9 +902,9 @@ def precond_grad_XMat(a,b, grads):
     """
     return preconditioned gradient with UVd preconditioner Q = (I + U*V')*diag(d),
     and a list of gradients, grads.
-    
+
     It is a wrapped version of function precond_grad_UVd_math for easy use.
-    Also, U, V, and d are transposed (row-major order as Python convention), and 
+    Also, U, V, and d are transposed (row-major order as Python convention), and
     packaged into one tensor.
     """
 
@@ -905,7 +912,7 @@ def precond_grad_XMat(a,b, grads):
     # sizes = [torch.numel(g) for g in grads]
     # shapes = [g.shape for g in grads]
     # cumsizes = torch.cumsum(torch.tensor(sizes), 0)
-    
+
     grad = torch.cat([torch.flatten(g) for g in grads])
 
     # precondition gradients
@@ -935,7 +942,7 @@ class XMat(Optimizer):
         except for numerical errors due to non-deterministic behaviors.
         Random numbers, if any, used inside the closure should be generated starting from the same state, where the rng state can be
         read and set by, e.g., `torch.cuda.get_rng_state' and `torch.cuda.set_rng_state', respectively.
-        
+
         Note 2: Momentum here is the moving average of gradient so that its setting is decoupled from the learning rate.
         This is necessary as the learning rate in PSGD is normalized.
 
@@ -945,7 +952,7 @@ class XMat(Optimizer):
         exact_hessian_vector_product (bool) all can be reset on the fly.
     """
     def __init__(self, params_with_grad, preconditioner_init_scale=1.0,
-                 lr_params=0.01, lr_preconditioner=0.01, momentum=0.0, 
+                 lr_params=0.01, lr_preconditioner=0.01, momentum=0.0,
                  grad_clip_max_norm=None, preconditioner_update_probability=1.0,
                  exact_hessian_vector_product: bool = True):
         # mutable members
@@ -966,9 +973,9 @@ class XMat(Optimizer):
         num_params = self._param_cumsizes[-1]
         self._a = torch.ones(num_params, dtype=dtype, device=device)*preconditioner_init_scale
         self._b = torch.zeros(num_params, dtype=dtype, device=device)
-        self._m = None # buffer for momentum 
+        self._m = None # buffer for momentum
         defaults = dict(lr=lr_params)
-        super(XMat, self).__init__(self._params_with_grad, defaults)        
+        super(XMat, self).__init__(self._params_with_grad, defaults)
 
     @torch.no_grad()
     def step(self, closure):
@@ -1022,7 +1029,7 @@ class XMat(Optimizer):
                 grads = torch.autograd.grad(loss, self._params_with_grad)
             vs = None  # no vs and Hvs
 
-        # preconditioned gradients; momentum is optional        
+        # preconditioned gradients; momentum is optional
         grad = torch.cat([torch.flatten(g) for g in grads])
         if self.momentum > 0:
             if self._m is None:
@@ -1031,9 +1038,9 @@ class XMat(Optimizer):
                 self._m.mul_(self.momentum).add_((1 - self.momentum)*grad)
             pre_grad = precond_grad_Xmat_math(self._a, self._b, self._m)
         else:
-            self._m = None # clean the buffer when momentum is set to zero again 
+            self._m = None # clean the buffer when momentum is set to zero again
             pre_grad = precond_grad_Xmat_math(self._a, self._b, grad)
-        
+
         # gradient clipping is optional
         if self.grad_clip_max_norm is None:
             lr = self.lr_params
@@ -1056,7 +1063,7 @@ class XMat(Optimizer):
 
 ###############################################################################
 # The classic Newton–Raphson type preconditioner.
-# Clearly, it is applicable only to small scale problems 
+# Clearly, it is applicable only to small scale problems
 #
 
 # @torch.jit.script
@@ -1068,7 +1075,7 @@ def update_precond_newton_math_(Q, v, h, step, tiny):
     a = Q.mm(h)
     b = torch.linalg.solve_triangular(Q.t(), v, upper=False)
     grad = torch.triu(a.mm(a.t()) - b.mm(b.t()))
-    mu = step/(grad.abs().max() + tiny)      
+    mu = step/(grad.abs().max() + tiny)
     Q.sub_(mu*grad.mm(Q))
 
 class Newton:
@@ -1091,7 +1098,7 @@ class Newton:
         except for numerical errors due to non-deterministic behaviors.
         Random numbers, if any, used inside the closure should be generated starting from the same state, where the rng state can be
         read and set by, e.g., `torch.cuda.get_rng_state' and `torch.cuda.set_rng_state', respectively.
-        
+
         Note 2: Momentum here is the moving average of gradient so that its setting is decoupled from the learning rate.
         This is necessary as the learning rate in PSGD is normalized.
         Note 3: Currently, no support of sparse and mixed-precision gradients.
@@ -1099,7 +1106,7 @@ class Newton:
         exact_hessian_vector_product (bool) all can be reset on the fly.
     """
     def __init__(self, params_with_grad, preconditioner_init_scale=1.0,
-                 lr_params=0.01, lr_preconditioner=0.01, momentum=0.0, 
+                 lr_params=0.01, lr_preconditioner=0.01, momentum=0.0,
                  grad_clip_max_norm=None, preconditioner_update_probability=1.0,
                  exact_hessian_vector_product: bool = True):
         # mutable members
@@ -1119,7 +1126,7 @@ class Newton:
         self._param_cumsizes = torch.cumsum(torch.tensor(self._param_sizes), 0)
         num_params = self._param_cumsizes[-1]
         self._Q = torch.eye(num_params, dtype=dtype, device=device)*preconditioner_init_scale
-        self._m = None # buffer for momentum 
+        self._m = None # buffer for momentum
 
     @torch.no_grad()
     def step(self, closure):
@@ -1173,7 +1180,7 @@ class Newton:
                 grads = torch.autograd.grad(loss, self._params_with_grad)
             vs = None  # no vs and Hvs
 
-        # preconditioned gradients; momentum is optional        
+        # preconditioned gradients; momentum is optional
         grad = torch.cat([torch.flatten(g) for g in grads])
         if self.momentum > 0:
             if self._m is None:
@@ -1182,9 +1189,9 @@ class Newton:
                 self._m.mul_(self.momentum).add_((1 - self.momentum)*grad)
             pre_grad = self._Q.t() @ (self._Q @ self._m)
         else:
-            self._m = None # clean the buffer when momentum is set to zero again 
+            self._m = None # clean the buffer when momentum is set to zero again
             pre_grad = self._Q.t() @ (self._Q @ grad)
-        
+
         # gradient clipping is optional
         if self.grad_clip_max_norm is None:
             lr = self.lr_params
