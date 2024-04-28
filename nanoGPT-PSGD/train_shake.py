@@ -17,7 +17,7 @@ $ torchrun --nproc_per_node=8 --nnodes=2 --node_rank=1 --master_addr=123.456.123
 """
 
 import os
-os.environ['XRT_TPU_CONFIG'] = 'localservice;0;localhost:51011'
+
 import time
 import math
 import pickle
