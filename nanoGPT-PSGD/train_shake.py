@@ -26,19 +26,12 @@ import copy
 import numpy as np
 import torch
 import torch.distributed as dist
-import torch_xla.distributed.parallel_loader as pl
 import copy
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
 from model import GPTConfig, GPT
-# from customCrossEntropy import customCrossEntropy
-from RMD_loss import RMD_Loss
-# from dadapt_SMD import DAdaptSMD
-from SMD_opt import SMD_qnorm, SMD_PNM
-from AdaBelief import AdaBelief
-from signSMD import signSMD
-from adamw_q import AdamWq#, AdamW
+
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
 # I/O
