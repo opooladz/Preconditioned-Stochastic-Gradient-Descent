@@ -14,6 +14,7 @@ import random
 import os
 from data_loaders.loaders import *
 from models.resnet import ResNet18
+from models.resnet_affine import ResNet18Affine
 from reproduce.seeds import *
 
 parser = argparse.ArgumentParser()
@@ -143,7 +144,10 @@ test_accs_l = []
 for run in range(runs):
     seed_l[run]
     set_seed(seed_l[run])
-    net = ResNet18(shortcut_connection=True).to(device)
+    if optimizer == 'PSGD_Affine':
+        net = ResNet18Affine(shortcut_connection=True).to(device)
+    else:
+        net = ResNet18(shortcut_connection=True).to(device)
 
     if optimizer == 'SGD':
         # SGD baseline
@@ -162,6 +166,14 @@ for run in range(runs):
             preconditioner_update_probability = 0.1,
             exact_hessian_vector_product = exact_hessian_vector_product
 
+        )
+    elif optimizer == 'PSGD_Affine':
+        opt = psgd.Affine(
+            net.parameters(),
+            lr_params = lr0,
+            momentum = 0.9,
+            preconditioner_update_probability = 0.1,
+            exact_hessian_vector_product = exact_hessian_vector_product            
         )
     else:
         # PSGD with low rank approximation preconditioner
