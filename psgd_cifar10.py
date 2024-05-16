@@ -66,17 +66,24 @@ print("Data Seed List: \t\t\t{}".format(data_seed_l))
 set_cuda(deterministic=True)
 torch_version = torch.__version__
 print("Torch Version: \t\t\t\t{}".format(torch_version))
-if torch_version.startswith('2'):
-    exact_hessian_vector_product = False
-    print("Using inexact hessian vector product: torch.compile does not support double auto.grad")
-else:
-    exact_hessian_vector_product = True
+# if torch_version.startswith('2'):
+#     exact_hessian_vector_product = False
+#     print("Using inexact hessian vector product: torch.compile does not support double auto.grad")
+# else:
+#     exact_hessian_vector_product = True
+exact_hessian_vector_product = True
     
 
 
 if optimizer == 'SGD':
     lr0 = 1.0   # 0.1 -> 1.0 when momentum factor = 0.9 as momentum in PSGD is the moving average of gradient
     decay = 5e-4
+elif 'Affine' in optimizer:
+    lr0 = 2e-1
+    if shortcut_connection:
+        decay = 2e-2
+    else:
+        decay = 1e-2
 else: # PSGD_XMat or PSGD_UVd
     lr0 = 2e-2
     if shortcut_connection:
@@ -90,8 +97,8 @@ else:
     batchsize = 64
 
 def test(net, device, data_loader, criterion):
-    if torch.__version__.startswith('2'):
-        net = torch.compile(net)
+    # if torch.__version__.startswith('2'):
+    #     net = torch.compile(net)
     net.eval()
     test_loss = 0
     correct = 0
@@ -112,8 +119,8 @@ def test(net, device, data_loader, criterion):
     return accuracy
 
 def train(net, device, data_loader, criterion):
-    if torch.__version__.startswith('2'):
-        net = torch.compile(net)
+    # if torch.__version__.startswith('2'):
+    #     net = torch.compile(net)
     net.train()  # do not forget it as there is BN
     total = 0
     train_loss = 0
