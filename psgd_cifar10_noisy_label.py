@@ -18,6 +18,7 @@ import copy
 import math
 from data_loaders.loaders import *
 from models.resnet import ResNet18
+from models.resnet_affine import ResNet18Affine
 from reproduce.seeds import *
 
 parser = argparse.ArgumentParser()
@@ -26,7 +27,7 @@ parser.add_argument("--stage2",                     default='cifar10',          
 parser.add_argument("--epoch_concept_switch",       default=201,                            help="when should we switch to stage2 of experiment")
 parser.add_argument("--num_epoch",                  default=200,                            help="how long should our full experiment be")
 parser.add_argument("--device",                     default='cuda:0',                       help="for example, cuda:0")
-parser.add_argument("--optimizer",                  default='PSGD_XMat',                    help="choices are SGD, PSGD_XMat and PSGD_UVd")
+parser.add_argument("--optimizer",                  default='PSGD_Affine',                    help="choices are SGD, PSGD_XMat and PSGD_UVd")
 parser.add_argument("--lr_scheduler",               default='cos',                          help="choices are stage and cos")
 parser.add_argument("--shortcut_connection",        default=1,           type=int,          help="choices are 0 and 1")
 parser.add_argument('--seed',                       default=2048,        type=int,          help='random seed')
@@ -65,6 +66,12 @@ set_cuda(deterministic=True)
 if optimizer == 'SGD':
     lr0 = 1.0   # 0.1 -> 1.0 when momentum factor = 0.9 as momentum in PSGD is the moving average of gradient
     decay = 5e-4
+elif 'Affine' in optimizer:
+    lr0 = 2e-1
+    if shortcut_connection:
+        decay = 2e-2
+    else:
+        decay = 1e-2
 else: # PSGD_XMat or PSGD_UVd
     lr0 = 2e-2
     if shortcut_connection:
@@ -78,8 +85,8 @@ else:
     batchsize = 64
 
 def test(net, device, data_loader, criterion):
-    if torch.__version__.startswith('2'):
-        net = torch.compile(net)    
+    # if torch.__version__.startswith('2'):
+    #     net = torch.compile(net)    
     net.eval()
     test_loss = 0
     correct = 0
@@ -101,8 +108,8 @@ def test(net, device, data_loader, criterion):
     return accuracy
 
 def test_clean(net, device, data_loader, criterion):
-    if torch.__version__.startswith('2'):
-        net = torch.compile(net)    
+    # if torch.__version__.startswith('2'):
+    #     net = torch.compile(net)    
     net.eval()
     test_loss = 0
     correct = 0
@@ -124,8 +131,8 @@ def test_clean(net, device, data_loader, criterion):
     return accuracy
 
 def train(net, device, train_loader, loss_cores,noise_prior_cur):
-    if torch.__version__.startswith('2'):
-        net = torch.compile(net)    
+    # if torch.__version__.startswith('2'):
+    #     net = torch.compile(net)    
     net.train()  # do not forget it as there is BN
     total = 0
     train_loss = 0
@@ -194,6 +201,14 @@ elif optimizer == 'PSGD_XMat':
         momentum = 0.9,
         preconditioner_update_probability = 0.1,
     )
+elif optimizer == 'PSGD_Affine':
+    opt = psgd.Affine(
+        net.parameters(),
+        lr_params = lr0,
+        momentum = 0.9,
+        preconditioner_update_probability = 0.1,
+        exact_hessian_vector_product = exact_hessian_vector_product            
+    )    
 else:
     # PSGD with low rank approximation preconditioner
     opt = psgd.UVd(
