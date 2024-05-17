@@ -22,10 +22,10 @@ from models.resnet_affine import ResNet18Affine
 from reproduce.seeds import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--experiment",                 default='cifar10',                      help="pick which experiment")
+parser.add_argument("--experiment",                 default='noisy_soft',                      help="pick which experiment")
 parser.add_argument("--stage2",                     default='cifar10',                      help="pick stage2 of experiment")
 parser.add_argument("--epoch_concept_switch",       default=201,                            help="when should we switch to stage2 of experiment")
-parser.add_argument("--num_epoch",                  default=200,                            help="how long should our full experiment be")
+parser.add_argument("--num_epoch",                  default=100,                            help="how long should our full experiment be")
 parser.add_argument("--device",                     default='cuda:0',                       help="for example, cuda:0")
 parser.add_argument("--optimizer",                  default='PSGD_Affine',                    help="choices are SGD, PSGD_XMat and PSGD_UVd")
 parser.add_argument("--lr_scheduler",               default='cos',                          help="choices are stage and cos")
