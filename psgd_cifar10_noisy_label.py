@@ -183,7 +183,8 @@ def train(net, device, train_loader, loss_cores,noise_prior_cur):
     return train_loss, train_accuracy, noise_prior_cur
 
 set_seed(args.seed)
-net = ResNet18(shortcut_connection=True).to(device)
+# net = ResNet18(shortcut_connection=True).to(device)
+net = ResNet18Affine(shortcut_connection=True).to(device)
 
 if optimizer == 'SGD':
     # SGD baseline
