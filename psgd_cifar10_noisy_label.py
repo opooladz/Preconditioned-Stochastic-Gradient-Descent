@@ -207,7 +207,6 @@ elif optimizer == 'PSGD_Affine':
         lr_params = lr0,
         momentum = 0.9,
         preconditioner_update_probability = 0.1,
-        exact_hessian_vector_product = exact_hessian_vector_product            
     )    
 else:
     # PSGD with low rank approximation preconditioner
