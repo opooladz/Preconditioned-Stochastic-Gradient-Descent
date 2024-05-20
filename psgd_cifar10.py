@@ -81,7 +81,7 @@ if optimizer == 'SGD':
 elif 'Affine' in optimizer:
     lr0 = 2e-1
     if shortcut_connection:
-        decay = 2e-2
+        decay = 1
     else:
         decay = 1e-2
 else: # PSGD_XMat or PSGD_UVd
