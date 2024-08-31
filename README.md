@@ -1,7 +1,8 @@
 # Preconditioned-Stochastic-Gradient-Descent
 
 
-
+Join the (discord)
+ [https://discord.com/invite/w9VPjPHb]
 
 ### Quick Guide
 
